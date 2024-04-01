@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/reaper8055/distributed-cache/cache-with-vertical-sharding/cache"
+	"github.com/reaper8055/distributed-cache/cache-with-inconsistent-vertical-sharding/cache"
 )
 
 func main() {
