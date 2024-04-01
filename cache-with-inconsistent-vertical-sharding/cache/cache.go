@@ -25,6 +25,14 @@ func New(n int) Shard {
 	return shards
 }
 
+/*
+In the context of a vertically sharded cache or any distributed data system,
+"Data Distribution" refers to how the data is spread across the different shards
+or nodes. A well-balanced distribution ensures that no single shard is
+overwhelmed, leading to more efficient processing and resource utilization.
+
+The approach here is pretty straightforward but will cause uneven load and performance issues across shards i.e some shards are handling significantly more read/writes than others, leading to hotspot.
+*/
 func (s Shard) GetShardIndex(key string) int {
 	hash := fnv.New32a()
 	hash.Write([]byte(key))
