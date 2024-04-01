@@ -2,10 +2,25 @@ package cache
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
 )
+
+var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func getRandomString() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const strlen = 10
+
+	b := make([]byte, strlen)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+
+	return string(b)
+}
 
 func TestCache(t *testing.T) {
 	c := New(6)
@@ -21,8 +36,8 @@ func TestCache(t *testing.T) {
 			for i := 0; i < n; i++ {
 				go func(i int) {
 					defer wg.Done()
-					key := "Key-" + fmt.Sprint(i)
-					value := "value-" + fmt.Sprint(i)
+					key := getRandomString()
+					value := fmt.Sprint(i)
 
 					if i%2 == 0 {
 						c.Set(key, value)
@@ -37,28 +52,33 @@ func TestCache(t *testing.T) {
 }
 
 func BenchmarkDataDistribution(b *testing.B) {
-	c := New(8)
-	goroutines := []int{100_1000, 1_000_000, 10_000_000}
+	shards := New(4)
+	goroutines := []int{100_000, 1_000_000, 10_000_000}
 
 	var wg sync.WaitGroup
 
 	for _, n := range goroutines {
 		b.Run(fmt.Sprint(n)+":goroutines", func(b *testing.B) {
+			randStrings := make([]string, n)
+			for i := 0; i < n; i++ {
+				randStrings[i] = getRandomString()
+			}
+
 			wg.Add(n)
 			for i := 0; i < n; i++ {
 				go func(i int) {
 					defer wg.Done()
-					key := "Key-" + fmt.Sprint(i)
-					value := "Value-" + fmt.Sprint(i)
-					c.Set(key, value)
+					key := randStrings[i]
+					value := "value: " + fmt.Sprint(i)
+					shards.Set(key, value)
 				}(i)
 			}
+			wg.Wait()
+
+			for j := 0; j < len(shards); j++ {
+				b.Logf("shard %d: %d\n", j, len(shards[j].store))
+			}
 		})
-		wg.Wait()
-	}
-	for i := 0; i < len(c); i++ {
-		b.Logf("%s: %d\n", "shardIndex", i)
-		b.Logf("%s: %d", "Count", len(c[i].store))
 	}
 }
 
@@ -81,8 +101,8 @@ func BenchmarkCache(b *testing.B) {
 			for i := 0; i < n; i++ {
 				go func(i int) {
 					defer wg.Done()
-					key := "Key-" + fmt.Sprint(i)
-					value := "value-" + fmt.Sprint(i)
+					key := getRandomString()
+					value := fmt.Sprint(i)
 
 					if i%2 == 0 {
 						start := time.Now()

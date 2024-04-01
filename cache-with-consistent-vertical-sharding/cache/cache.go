@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"hash/fnv"
+	"math"
 	"sync"
 )
 
@@ -39,16 +40,21 @@ func (s Shard) GetShardedCache(key string) *Cache {
 	keyHash.Write([]byte(key))
 	keyHashValue := keyHash.Sum32()
 
+	var selectedCache *Cache
+	var minDistance uint32 = math.MaxUint32
+
 	for _, shardedCache := range s {
 		shardHash := fnv.New32a()
-		shardHash.Write([]byte(fmt.Sprintf("%p", shardedCache)))
+		shardHash.Write([]byte(fmt.Sprint(len(shardedCache.store))))
 		shardHashValue := shardHash.Sum32()
 
-		if keyHashValue < shardHashValue {
-			return shardedCache
+		distance := shardHashValue - keyHashValue
+		if distance < minDistance {
+			minDistance = distance
+			selectedCache = shardedCache
 		}
 	}
-	return s[0]
+	return selectedCache
 }
 
 func (s Shard) Contains(key string) bool {
