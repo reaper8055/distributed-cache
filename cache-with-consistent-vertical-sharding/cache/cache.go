@@ -31,7 +31,7 @@ To address the skewed distribution, we have to implement consistent hashing. Con
 minimizes the redistribution of keys when a shard is added or removed and it helps distribute keys
 more uniformly across the shards.
 
-With consistent hashing, the hash space is treated a a fixed circular space or "ring". Each shard
+With consistent hashing, the hash space is treated like a fixed circular space or "ring". Each shard
 is assigned a point on this ring, and each shardedCache pointer is hashed to a position on the
 same ring. The key belongs to the shard that is the next one clockwise on the ring.
 */
