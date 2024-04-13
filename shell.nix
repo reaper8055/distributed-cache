@@ -6,7 +6,7 @@ mkShell {
   buildInputs = [
     # shell
     zsh
-    # go
+    # golang
     go
     gopls
     gofumpt

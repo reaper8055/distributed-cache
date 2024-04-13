@@ -59,16 +59,11 @@ func BenchmarkDataDistribution(b *testing.B) {
 
 	for _, n := range goroutines {
 		b.Run(fmt.Sprint(n)+":goroutines", func(b *testing.B) {
-			randStrings := make([]string, n)
-			for i := 0; i < n; i++ {
-				randStrings[i] = getRandomString()
-			}
-
 			wg.Add(n)
 			for i := 0; i < n; i++ {
 				go func(i int) {
 					defer wg.Done()
-					key := randStrings[i]
+					key := getRandomString()
 					value := "value: " + fmt.Sprint(i)
 					shards.Set(key, value)
 				}(i)
