@@ -61,3 +61,114 @@ Splitting a shard involves redistributing its keys among the new shard(s). This 
 - **Complexity:** Dynamic sharding adds significant complexity to your system. Make sure that the benefits outweigh the costs in terms of maintenance and potential bugs.
 
 This is a high-level overview and starting point. Each of these steps can be quite detailed and complex, depending on your specific requirements and existing infrastructure.
+
+### Calculating cache size at regular intervals
+
+Implement a mechanism to calculate the cache size at regular intervals (every N seconds or minutes) in your cache system. Here's how you can do it:
+
+### 1. Periodic Cache Size Calculation
+
+Implement a background goroutine that runs periodically to calculate the size of the cache. This goroutine can iterate through all shards and sum up the number of key-value pairs stored in each shard.
+
+```go
+import (
+    "sync"
+    "time"
+)
+
+// CacheSizeCalculator calculates the size of the cache at regular intervals.
+type CacheSizeCalculator struct {
+    shards Shard
+    interval time.Duration
+    stopChan chan struct{}
+    mu sync.Mutex
+    sizes []int // Store the calculated sizes
+}
+
+// NewCacheSizeCalculator initializes a new CacheSizeCalculator.
+func NewCacheSizeCalculator(shards Shard, interval time.Duration) *CacheSizeCalculator {
+    return &CacheSizeCalculator{
+        shards: shards,
+        interval: interval,
+        stopChan: make(chan struct{}),
+    }
+}
+
+// Start starts the cache size calculation process.
+func (c *CacheSizeCalculator) Start() {
+    ticker := time.NewTicker(c.interval)
+    defer ticker.Stop()
+
+    for {
+        select {
+        case <-ticker.C:
+            size := c.calculateCacheSize()
+            c.mu.Lock()
+            c.sizes = append(c.sizes, size)
+            c.mu.Unlock()
+        case <-c.stopChan:
+            return
+        }
+    }
+}
+
+// Stop stops the cache size calculation process.
+func (c *CacheSizeCalculator) Stop() {
+    close(c.stopChan)
+}
+
+// GetSizes returns the calculated cache sizes.
+func (c *CacheSizeCalculator) GetSizes() []int {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    return c.sizes
+}
+
+// calculateCacheSize calculates the total size of the cache.
+func (c *CacheSizeCalculator) calculateCacheSize() int {
+    totalSize := 0
+    for _, shard := range c.shards {
+        shard.RLock()
+        totalSize += len(shard.store)
+        shard.RUnlock()
+    }
+    return totalSize
+}
+```
+
+### 2. Usage
+
+You can create an instance of `CacheSizeCalculator` and start it to begin calculating the cache size at regular intervals.
+
+```go
+func main() {
+    // Initialize your cache shards
+    shards := New(4)
+
+    // Initialize the CacheSizeCalculator with an interval of 1 minute
+    calculator := NewCacheSizeCalculator(shards, time.Minute)
+    
+    // Start the cache size calculation process
+    go calculator.Start()
+
+    // Perform other operations in your program
+
+    // Stop the cache size calculation process when no longer needed
+    defer calculator.Stop()
+
+    // Example: Retrieve cache sizes every 5 minutes
+    ticker := time.NewTicker(5 * time.Minute)
+    defer ticker.Stop()
+
+    for {
+        select {
+        case <-ticker.C:
+            sizes := calculator.GetSizes()
+            // Process/cache sizes as needed
+            fmt.Println("Cache sizes:", sizes)
+        }
+    }
+}
+```
+
+This approach allows you to periodically monitor the cache size and take actions based on the collected data. You can adjust the interval at which cache sizes are calculated according to your requirements.
