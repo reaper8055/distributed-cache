@@ -1,5 +1,5 @@
 # Use the official Go image as a parent image
-FROM golang:1.21-alpine
+FROM golang:1.25.3-alpine
 
 # Set the Current Working Directory inside the container
 WORKDIR /distributed-cache
